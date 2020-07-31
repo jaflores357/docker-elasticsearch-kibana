@@ -1,0 +1,52 @@
+version: '2'
+
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.2.3
+    container_name: ${HOSTNAME}_elasticsearch 
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - /data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx8g -Xms8g"
+    networks:
+      - elk
+
+  kibana:
+    image: docker.io/zenviavas/kibana-oss:6.2.3
+    container_name: ${HOSTNAME}_kibana
+    build:
+      context: kibana/
+    volumes:
+      - ./kibana/config/:/usr/share/kibana/config:ro
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  elasticsearch_exporter:
+    image: zenviavas/prometheus-elasticsearch-exporter:1.0.2
+    command:
+      - '-es.uri=http://elasticsearch:9200'
+    restart: always
+    ports:
+      - "9108:9108"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+networks:
+
+  elk:
+    driver: bridge
